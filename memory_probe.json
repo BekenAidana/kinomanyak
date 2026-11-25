@@ -1,0 +1,162 @@
+{
+  "model": "gpt-6-luna",
+  "n": 10,
+  "mismatches": 4,
+  "mismatch_ids": [
+    "kz-002",
+    "kz-004",
+    "kz-007",
+    "kz-008"
+  ],
+  "rows": [
+    {
+      "id": "kz-001",
+      "title": "Кочевник",
+      "catalog": {
+        "year": 2005,
+        "minutes": 112
+      },
+      "memory": {
+        "year": 2005,
+        "minutes": 112
+      },
+      "match": true
+    },
+    {
+      "id": "kz-002",
+      "title": "Жаужүрек мың бала",
+      "catalog": {
+        "year": 2012,
+        "minutes": 90
+      },
+      "memory": {
+        "year": 2012,
+        "minutes": 133
+      },
+      "match": false
+    },
+    {
+      "id": "kz-003",
+      "title": "Келін",
+      "catalog": {
+        "year": 2009,
+        "minutes": 82
+      },
+      "memory": {
+        "year": 2009,
+        "minutes": 82
+      },
+      "match": true
+    },
+    {
+      "id": "kz-004",
+      "title": "Подарок Сталину",
+      "catalog": {
+        "year": 2008,
+        "minutes": 100
+      },
+      "memory": {
+        "year": 2008,
+        "minutes": 99
+      },
+      "match": false
+    },
+    {
+      "id": "kz-005",
+      "title": "Шал",
+      "catalog": {
+        "year": 2012,
+        "minutes": 102
+      },
+      "memory": {
+        "year": 2012,
+        "minutes": 102
+      },
+      "match": true
+    },
+    {
+      "id": "kz-006",
+      "title": "Улжан",
+      "catalog": {
+        "year": 2007,
+        "minutes": 105
+      },
+      "memory": {
+        "year": 2007,
+        "minutes": 105
+      },
+      "match": true
+    },
+    {
+      "id": "kz-007",
+      "title": "Айка",
+      "catalog": {
+        "year": 2019,
+        "minutes": 80
+      },
+      "memory": {
+        "year": 2018,
+        "minutes": 100
+      },
+      "match": false
+    },
+    {
+      "id": "kz-008",
+      "title": "Гагарин",
+      "catalog": {
+        "year": 2020,
+        "minutes": 90
+      },
+      "memory": {
+        "year": 2013,
+        "minutes": 108
+      },
+      "match": false
+    },
+    {
+      "id": "ww-001",
+      "title": "Интерстеллар",
+      "catalog": {
+        "year": 2014,
+        "minutes": 169
+      },
+      "memory": {
+        "year": 2014,
+        "minutes": 169
+      },
+      "match": true
+    },
+    {
+      "id": "ww-002",
+      "title": "Начало",
+      "catalog": {
+        "year": 2010,
+        "minutes": 148
+      },
+      "memory": {
+        "year": 2010,
+        "minutes": 148
+      },
+      "match": true
+    }
+  ],
+  "usage": {
+    "completion_tokens": 169,
+    "prompt_tokens": 252,
+    "total_tokens": 421,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": 0,
+      "audio_tokens": 0,
+      "reasoning_tokens": 0,
+      "rejected_prediction_tokens": 0,
+      "text_tokens": null
+    },
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cache_write_tokens": 0,
+      "cached_tokens": 0,
+      "image_tokens": null,
+      "text_tokens": null
+    }
+  }
+}
