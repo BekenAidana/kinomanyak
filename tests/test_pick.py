@@ -47,6 +47,10 @@ class Completions:
     def parse(self, **kwargs):
         return self.owner.parse(**kwargs)
 
+    def create(self, **kwargs):
+        # fallback после 501 (Ollama без structured output)
+        return self.owner.parse(**kwargs)
+
 
 class Chat:
     def __init__(self, owner):

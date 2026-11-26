@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -165,6 +166,91 @@ def print_films(films: list[dict[str, Any]], ids: list[str], whys: list[str]) ->
         print()
 
 
+def extract_json(text: str) -> str:
+    """Достаёт JSON из ответа: убирает ``` ограды; чинит обрезанные скобки у Ollama."""
+    text = (text or "").strip()
+    if not text:
+        raise ValueError("пустой ответ")
+    fence = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.S | re.I)
+    if fence:
+        text = fence.group(1).strip()
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("в ответе нет JSON-объекта")
+    text = text[start:]
+    try:
+        json.loads(text)
+        return text
+    except json.JSONDecodeError:
+        pass
+    # qwen иногда обрывает хвост: ...picks:[ {...} ]  без финальной }
+    for suffix in ("}", "]}", "\"]}", "\"}]}"):
+        candidate = text + suffix
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            continue
+    depth = 0
+    in_str = False
+    escape = False
+    for i, ch in enumerate(text):
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[: i + 1]
+    raise ValueError("не удалось разобрать JSON")
+
+
+def choice_from_message(message) -> Choice:
+    """Схема из parsed (облако) или из content (Ollama без structured output)."""
+    parsed = getattr(message, "parsed", None)
+    if parsed is not None:
+        return parsed
+    return Choice.model_validate_json(extract_json(message.content or ""))
+
+
+def complete_choice(client, model: str, prompt: str, effort: str):
+    """Сначала parse (Structured Outputs). При 501 — create без response_format.
+
+    Некоторые Ollama/MLX-сборки не умеют json_schema/json_object → 501.
+    Тогда модель пишет JSON текстом, а Choice проверяем мы (как схема ≠ правда).
+    """
+    messages = [
+        {"role": "system", "content": INSTRUCTIONS},
+        {"role": "user", "content": prompt},
+    ]
+    try:
+        return client.chat.completions.parse(
+            model=model,
+            messages=messages,
+            response_format=Choice,
+            max_completion_tokens=LIMIT,
+            reasoning_effort=effort,
+        )
+    except openai.APIStatusError as error:
+        if error.status_code != 501:
+            raise
+        return client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_completion_tokens=LIMIT,
+            reasoning_effort=effort,
+        )
+
+
 def pick(client, model: str, query: str, films: list[dict[str, Any]],
          effort: str = "none") -> tuple[str, list]:
     """Главный поток (как cook у ментора).
@@ -181,16 +267,7 @@ def pick(client, model: str, query: str, films: list[dict[str, Any]],
     known = by_id(films)
 
     try:
-        completion = client.chat.completions.parse(
-            model=model,
-            messages=[
-                {"role": "system", "content": INSTRUCTIONS},
-                {"role": "user", "content": prompt},
-            ],
-            response_format=Choice,
-            max_completion_tokens=LIMIT,
-            reasoning_effort=effort,  # для qwen: "none" (как в лекции)
-        )
+        completion = complete_choice(client, model, prompt, effort)
     except openai.APIConnectionError:
         print("Нет связи с сервером")
         log(model, journal_request, "no_connection", started)
@@ -212,13 +289,18 @@ def pick(client, model: str, query: str, films: list[dict[str, Any]],
     message = completion.choices[0].message
     if os.environ.get("RAW"):
         print("Модель ответила:", message.content)
+    if getattr(completion.choices[0], "finish_reason", None) == "length":
+        print("Ответ обрезан на лимите токенов")
+        log(model, journal_request, "length", started, completion)
+        return "length", []
     if message.refusal:
         print("Модель отказалась:", message.refusal)
         log(model, journal_request, "refusal", started, completion)
         return "refusal", []
 
-    choice = message.parsed
-    if choice is None:
+    try:
+        choice = choice_from_message(message)
+    except (ValidationError, ValueError, json.JSONDecodeError):
         print("Ответ не соответствует схеме")
         log(model, journal_request, "invalid", started, completion,
             rejected=["schema"])
@@ -246,15 +328,15 @@ def pick(client, model: str, query: str, films: list[dict[str, Any]],
 
 
 def main() -> None:
+    # Как chef.py на лекции: сначала облако, потом локальный qwen.
+    # Без Ollama вторая модель даст no_connection — это нормально.
     query = sys.argv[1] if len(sys.argv) > 1 else "что посмотреть вечером"
     films = load_films()
     client = OpenAI()
     pick(client, MODEL, query, films)
-    # Локальная модель опциональна: без Ollama будет no_connection — это нормально.
-    if "--local" in sys.argv:
-        local = OpenAI(base_url="http://127.0.0.1:11434/v1", api_key="ollama",
-                       max_retries=0)
-        pick(local, "qwen3.5:4b", query, films)
+    local = OpenAI(base_url="http://127.0.0.1:11434/v1", api_key="ollama",
+                   max_retries=0)
+    pick(local, "qwen3.5:4b", query, films)
 
 
 if __name__ == "__main__":
