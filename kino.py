@@ -1,5 +1,8 @@
 """Киноманьяк: подбор фильма из локального каталога.
 
+Каркас как fridge-chef (лекция 3 + семинар 3):
+  system (правила) ≠ user (данные в тегах) → Structured Outputs → guardrails кодом → журнал.
+
 uv run kino.py "что посмотреть с мамой на казахском, до двух часов"
 """
 
@@ -21,12 +24,16 @@ load_dotenv()
 
 MODEL = "gpt-6-luna"
 LIMIT = 4000
+# $/1M токенов; show.py и log считают стоимость вызова из usage
 PRICE = {"gpt-6-luna": (0.10, 0.50), "gpt-6-astra": (10.00, 50.00)}
 ROOT = Path(__file__).resolve().parent
 FILMS_PATH = ROOT / "films.json"
-JOURNAL = ROOT / "calls.jsonl"
+JOURNAL = ROOT / "calls.jsonl"  # append-only журнал для show.py / сдачи
 MAX_PICKS = 3
 
+# --- Промпт (слой «правила для модели») ---
+# Теги <каталог>/<запрос> = только данные (семинар: иначе injection закрывает тег).
+# Один few-shot пример. Схема ≠ правда: чужой id ловит код, не промпт.
 INSTRUCTIONS = """Ты помощник по выбору фильмов. Нужно предложить от одного до трёх фильмов
 из <каталог> с учётом <запрос>. Без вступления, вариантов, Markdown и эмодзи.
 
@@ -48,6 +55,8 @@ INSTRUCTIONS = """Ты помощник по выбору фильмов. Нуж
 """
 
 
+# --- Схема ответа (Structured Outputs) ---
+# Гарантирует форму JSON, не корректность id. Корректность → sanitize_picks.
 class PickItem(BaseModel):
     film_id: str | int
     why: str = ""
@@ -73,6 +82,11 @@ def by_id(films: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 def log(model: str, request: str, outcome: str, started: float,
         completion=None, rejected: list | None = None) -> dict:
+    """Журнал вызова (лекция step-06): исход, токены, $, rejected id.
+
+    Пишем всегда — и ok, и ошибки API. show.py читает calls.jsonl.
+    request компактный: текст запроса + список id, без всего каталога.
+    """
     row = {
         "time": time.strftime("%Y-%m-%d %H:%M:%S"),
         "model": model,
@@ -114,7 +128,12 @@ def build_request(query: str, films: list[dict[str, Any]]) -> tuple[str, str]:
 def sanitize_picks(
     picks: list[PickItem], known: dict[str, dict[str, Any]]
 ) -> tuple[list[str], list[str], list[str]]:
-    """Возвращает (показанные id, why по порядку, rejected)."""
+    """Выходной guardrail (семинар: check_output + allow-list).
+
+    Allow-list сильнее stop-list: только id ∈ каталог.
+    Чужой id → rejected; повторы схлопываем; максимум MAX_PICKS.
+    Печать title/year/minutes/description идёт из каталога, не из ответа модели.
+    """
     shown: list[str] = []
     whys: list[str] = []
     rejected: list[str] = []
@@ -135,6 +154,7 @@ def sanitize_picks(
 
 
 def print_films(films: list[dict[str, Any]], ids: list[str], whys: list[str]) -> None:
+    """На экран — только после guardrail; факты из films, why — от модели."""
     index = by_id(films)
     for fid, why in zip(ids, whys):
         film = index[fid]
@@ -147,6 +167,15 @@ def print_films(films: list[dict[str, Any]], ids: list[str], whys: list[str]) ->
 
 def pick(client, model: str, query: str, films: list[dict[str, Any]],
          effort: str = "none") -> tuple[str, list]:
+    """Главный поток (как cook у ментора).
+
+    Порядок веток — непроверенное на экран не попадает:
+      API errors → length → refusal → schema → status no_match
+      → allow-list / dedupe / ≤3 → печать → journal.
+
+    Возвращает (outcome, ids). Кроме ok ids всегда [].
+    films передаёт вызывающий — pick сам файл не читает.
+    """
     started = time.time()
     prompt, journal_request = build_request(query, films)
     known = by_id(films)
@@ -160,7 +189,7 @@ def pick(client, model: str, query: str, films: list[dict[str, Any]],
             ],
             response_format=Choice,
             max_completion_tokens=LIMIT,
-            reasoning_effort=effort,
+            reasoning_effort=effort,  # для qwen: "none" (как в лекции)
         )
     except openai.APIConnectionError:
         print("Нет связи с сервером")

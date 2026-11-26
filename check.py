@@ -1,4 +1,8 @@
-"""Прогон queries.json через pick. Считает исходы и ожидания.
+"""Прогон queries.json через pick — набор проверок.
+
+Один удачный запуск ничего не доказывает: гоняем весь набор и смотрим
+исходы + expect (must / forbid / no_match). Проверяется всё приложение:
+промпт, схема, allow-list, журнал — не «только модель».
 
 uv run check.py
 uv run check.py --local   локальная qwen3.5:4b
@@ -26,6 +30,13 @@ JOURNAL_NOTE = Path("calls.jsonl")
 
 
 def expect_ok(item, outcome, ids) -> bool:
+    """Совпал ли ответ с ожиданием в queries.json.
+
+    must   — среди picks должен быть хотя бы один id из списка
+    forbid — ни одного id из списка
+    no_match — исход ровно no_match
+    без expect — на check не влияет (считаем только outcome)
+    """
     expect = item.get("expect") or {}
     if not expect:
         return True
@@ -66,6 +77,7 @@ def main() -> None:
 
     for item in items:
         query = item["query"]
+        # сколько чужих id поймал allow-list в этой итерации (из новой строки журнала)
         before = JOURNAL_NOTE.read_text(encoding="utf-8") if JOURNAL_NOTE.exists() else ""
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
