@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-JOURNAL = Path("calls.jsonl")
+JOURNAL = Path(__file__).resolve().parent / "calls.jsonl"
 LAST = 10
 
 

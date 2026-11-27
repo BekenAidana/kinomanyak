@@ -21,12 +21,13 @@ from pathlib import Path
 import openai
 from openai import OpenAI
 
-from kino import MODEL, load_films, pick
+from kino import (CLOUD_EFFORT, JOURNAL, LOCAL_MODEL, LOCAL_URL, MODEL, ROOT,
+                  load_films, pick)
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-QUERIES = Path("queries.json")
-JOURNAL_NOTE = Path("calls.jsonl")
+QUERIES = ROOT / "queries.json"
+JOURNAL_NOTE = JOURNAL  # тот же файл, куда пишет pick
 
 
 def expect_ok(item, outcome, ids) -> bool:
@@ -58,9 +59,9 @@ def main() -> None:
     items = json.loads(QUERIES.read_text(encoding="utf-8"))
     films = load_films()
     if "--local" in sys.argv:
-        client = OpenAI(base_url="http://127.0.0.1:11434/v1", api_key="ollama",
-                        max_retries=0)
-        model = "qwen3.5:4b"
+        client = OpenAI(base_url=LOCAL_URL, api_key="ollama", max_retries=0)
+        model = LOCAL_MODEL
+        effort = "none"
     else:
         try:
             client = OpenAI()
@@ -68,8 +69,9 @@ def main() -> None:
             print("Нет ключа: скопируйте .env.example в .env и впишите OPENAI_API_KEY")
             return
         model = MODEL
+        effort = CLOUD_EFFORT
 
-    print(f"Модель {model}: {len(items)} запросов…\n")
+    print(f"Модель {model} (reasoning_effort={effort}): {len(items)} запросов…\n")
     outcomes: list[str] = []
     rejected_total = 0
     expect_pass = expect_total = 0
@@ -81,7 +83,7 @@ def main() -> None:
         before = JOURNAL_NOTE.read_text(encoding="utf-8") if JOURNAL_NOTE.exists() else ""
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            outcome, ids = pick(client, model, query, films)
+            outcome, ids = pick(client, model, query, films, effort=effort)
         outcomes.append(outcome)
         after = JOURNAL_NOTE.read_text(encoding="utf-8") if JOURNAL_NOTE.exists() else ""
         new_lines = after[len(before):].splitlines()

@@ -1,8 +1,9 @@
 {
   "model": "gpt-6-luna",
   "n": 10,
-  "mismatches": 4,
+  "mismatches": 5,
   "mismatch_ids": [
+    "kz-001",
     "kz-002",
     "kz-004",
     "kz-007",
@@ -14,20 +15,20 @@
       "title": "Кочевник",
       "catalog": {
         "year": 2005,
-        "minutes": 112
+        "minutes": 122
       },
       "memory": {
         "year": 2005,
         "minutes": 112
       },
-      "match": true
+      "match": false
     },
     {
       "id": "kz-002",
       "title": "Жаужүрек мың бала",
       "catalog": {
-        "year": 2012,
-        "minutes": 90
+        "year": 2011,
+        "minutes": 132
       },
       "memory": {
         "year": 2012,
@@ -53,7 +54,7 @@
       "title": "Подарок Сталину",
       "catalog": {
         "year": 2008,
-        "minutes": 100
+        "minutes": 97
       },
       "memory": {
         "year": 2008,
@@ -76,7 +77,7 @@
     },
     {
       "id": "kz-006",
-      "title": "Улжан",
+      "title": "Ульжан",
       "catalog": {
         "year": 2007,
         "minutes": 105
@@ -91,8 +92,8 @@
       "id": "kz-007",
       "title": "Айка",
       "catalog": {
-        "year": 2019,
-        "minutes": 80
+        "year": 2018,
+        "minutes": 114
       },
       "memory": {
         "year": 2018,
@@ -102,14 +103,14 @@
     },
     {
       "id": "kz-008",
-      "title": "Гагарин",
+      "title": "Келинка Сабина",
       "catalog": {
-        "year": 2020,
-        "minutes": 90
+        "year": 2014,
+        "minutes": 103
       },
       "memory": {
-        "year": 2013,
-        "minutes": 108
+        "year": 2014,
+        "minutes": 90
       },
       "match": false
     },
@@ -142,8 +143,8 @@
   ],
   "usage": {
     "completion_tokens": 169,
-    "prompt_tokens": 252,
-    "total_tokens": 421,
+    "prompt_tokens": 305,
+    "total_tokens": 474,
     "completion_tokens_details": {
       "accepted_prediction_tokens": 0,
       "audio_tokens": 0,

@@ -24,6 +24,9 @@ from pydantic import BaseModel, ValidationError
 load_dotenv()
 
 MODEL = "gpt-6-luna"
+CLOUD_EFFORT = "medium"  # облако: kino.py и check.py ходят с одинаковой настройкой
+LOCAL_MODEL = "qwen3.5:4b"  # локально рассуждения выключены: effort="none"
+LOCAL_URL = "http://127.0.0.1:11434/v1"
 LIMIT = 4000
 # $/1M токенов; show.py и log считают стоимость вызова из usage
 PRICE = {"gpt-6-luna": (0.10, 0.50), "gpt-6-astra": (10.00, 50.00)}
@@ -82,7 +85,8 @@ def by_id(films: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 
 def log(model: str, request: str, outcome: str, started: float,
-        completion=None, rejected: list | None = None) -> dict:
+        completion=None, rejected: list | None = None,
+        error: str | None = None) -> dict:
     """Журнал вызова (лекция step-06): исход, токены, $, rejected id.
 
     Пишем всегда — и ok, и ошибки API. show.py читает calls.jsonl.
@@ -97,6 +101,8 @@ def log(model: str, request: str, outcome: str, started: float,
     }
     if rejected is not None:
         row["rejected"] = rejected
+    if error is not None:
+        row["error"] = error  # причина без id (например, ответ не прошёл схему)
     if completion is not None and getattr(completion, "usage", None):
         usage = completion.usage
         price_in, price_out = PRICE.get(model, (0, 0))
@@ -265,6 +271,7 @@ def pick(client, model: str, query: str, films: list[dict[str, Any]],
     started = time.time()
     prompt, journal_request = build_request(query, films)
     known = by_id(films)
+    print(f"\nМодель {model}")
 
     try:
         completion = complete_choice(client, model, prompt, effort)
@@ -276,14 +283,23 @@ def pick(client, model: str, query: str, films: list[dict[str, Any]],
         print("Ошибка API:", error.message)
         log(model, journal_request, f"error_{error.status_code}", started)
         return f"error_{error.status_code}", []
+    except openai.APIError as error:
+        # прочие ошибки SDK без HTTP-кода (например, неразборчивый ответ сервера)
+        print("Ошибка API:", error)
+        log(model, journal_request, "error_api", started)
+        return "error_api", []
     except openai.LengthFinishReasonError as error:
         print("Ответ обрезан на лимите токенов")
         log(model, journal_request, "length", started,
             getattr(error, "completion", None))
         return "length", []
+    except openai.ContentFilterFinishReasonError:
+        print("Модель отказалась: ответ остановлен фильтром содержания")
+        log(model, journal_request, "refusal", started, error="content_filter")
+        return "refusal", []
     except ValidationError:
         print("Ответ не соответствует схеме")
-        log(model, journal_request, "invalid", started, rejected=["schema"])
+        log(model, journal_request, "invalid", started, error="schema")
         return "invalid", []
 
     message = completion.choices[0].message
@@ -303,7 +319,7 @@ def pick(client, model: str, query: str, films: list[dict[str, Any]],
     except (ValidationError, ValueError, json.JSONDecodeError):
         print("Ответ не соответствует схеме")
         log(model, journal_request, "invalid", started, completion,
-            rejected=["schema"])
+            error="schema")
         return "invalid", []
 
     if choice.status != "ok":
@@ -333,10 +349,9 @@ def main() -> None:
     query = sys.argv[1] if len(sys.argv) > 1 else "что посмотреть вечером"
     films = load_films()
     client = OpenAI()
-    pick(client, MODEL, query, films)
-    local = OpenAI(base_url="http://127.0.0.1:11434/v1", api_key="ollama",
-                   max_retries=0)
-    pick(local, "qwen3.5:4b", query, films)
+    pick(client, MODEL, query, films, effort=CLOUD_EFFORT)
+    local = OpenAI(base_url=LOCAL_URL, api_key="ollama", max_retries=0)
+    pick(local, LOCAL_MODEL, query, films)
 
 
 if __name__ == "__main__":
