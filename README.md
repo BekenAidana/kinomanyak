@@ -8,6 +8,8 @@ Rare: условия запроса (минуты, годы, язык, жанр�
 
 Каркас: лекция 3 (fridge-chef) + семинар 3 (guardrails, cases, журнал).
 
+Как проект пришёл к нынешнему виду — проблемы, данные, решения и их эффект: [DECISIONS.md](DECISIONS.md).
+
 ## Запуск
 
 Нужны [uv](https://docs.astral.sh/uv/) и ключ OpenAI. Локальный qwen — через [Ollama](https://ollama.com) (`ollama pull qwen3.5:4b`).
@@ -349,3 +351,4 @@ python3 -I "../[1] Киноманьяк/check/kino_check.py" . --live   # + 5 з
 | `memory_probe.py` / `.json` | опыт «память без каталога» |
 | `tests/` | pytest без API: `test_pick.py` (Common), `test_filters.py` и `test_check.py` (Rare) |
 | `SPEC.md` | контракт Common + Rare |
+| `DECISIONS.md` | журнал решений: что нашли, что решили, что это дало |
