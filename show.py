@@ -5,6 +5,7 @@
 
 uv run show.py        последние 10 вызовов и итог
 uv run show.py all    все вызовы
+uv run show.py compare  таблица моделей для README (Rare)
 """
 
 import json
@@ -33,11 +34,12 @@ def output_tokens(usage):
 
 
 def table(rows):
-    print(f"{'время':19}  {'модель':14}  {'исход':14}  {'вход':>5}  {'выход':>5}  "
+    print(f"{'время':19}  {'модель':14}  {'шаг':7}  {'исход':14}  {'вход':>5}  {'выход':>5}  "
           f"{'рассуждения':>11}  {'сек':>5}  {'$':>8}")
     for row in rows:
         usage = row.get("usage") or {}
         print(f"{row.get('time', ''):19}  {str(row.get('model', '')):14}  "
+              f"{str(row.get('step', '')):7}  "
               f"{str(row.get('outcome', '')):14}  "
               f"{input_tokens(usage):>5}  {output_tokens(usage):>5}  "
               f"{reasoning(usage):>11}  {row.get('seconds', 0):>5}  "
@@ -45,7 +47,8 @@ def table(rows):
 
 
 def summary(rows):
-    outcomes = Counter(row.get("outcome") for row in rows)
+    choice = [r for r in rows if r.get("step", "choice") != "filters"]
+    outcomes = Counter(row.get("outcome") for row in choice)
     usages = [row.get("usage") or {} for row in rows]
     total_in = sum(input_tokens(u) for u in usages)
     total_out = sum(output_tokens(u) for u in usages)
@@ -53,14 +56,75 @@ def summary(rows):
     usd = sum(row.get("usd") or 0 for row in rows)
     rejected = sum(len(r.get("rejected") or []) for r in rows
                    if isinstance(r.get("rejected"), list))
+    violations = sum(len(r.get("violations") or []) for r in rows)
     print()
-    print(f"Вызовов: {len(rows)} ("
+    print(f"Строк журнала: {len(rows)} (фильтры {len(rows) - len(choice)}, "
+          f"выбор {len(choice)})")
+    print(f"Запросов: {len(choice)} ("
           + ", ".join(f"{name} {count}" for name, count in outcomes.most_common())
           + ")")
     print(f"Токенов: вход {total_in}, выход {total_out}, "
           f"из них рассуждения {total_reasoning}")
-    print(f"Отклонённых id: {rejected}")
+    print(f"Отклонённых id: {rejected}; нарушений условий отсёк код: {violations}")
     print(f"Стоимость всего журнала: ${usd:.4f}")
+
+
+def compare(rows):
+    """Таблица для README (Rare): по каждой модели из журнала + queries.json.
+
+    Запрос = строка step="choice"; прошёл ли он — expect_ok из check.py по
+    outcome и shown. Во всех прогонах — доля запросов, пройденных каждый раз.
+    Разбор = эталон — фильтры модели (строка filters) дали тех же кандидатов,
+    что conditions из queries.json. Нарушения (эталон) — показанные фильмы,
+    которые не проходят настоящие условия запроса. Секунды и $ — сумма строк
+    filters + choice на запрос.
+    """
+    from check import QUERIES, expect_ok, parse_report, real_violations
+    from kino import by_id, load_films
+
+    films = load_films()
+    known = by_id(films)
+    items = {f"<запрос>{x['query']}</запрос>": x
+             for x in json.loads(QUERIES.read_text(encoding="utf-8"))}
+
+    by_query = {x["query"]: x for x in items.values()}
+
+    def item_of(row):
+        return next((x for tag, x in items.items()
+                     if str(row.get("request", "")).startswith(tag)), None)
+
+    print(f"{'модель':14}  {'прогонов':>8}  {'пройдено':>13}  {'опечатки':>9}  {'во всех':>8}  "
+          f"{'разбор=эталон':>13}  {'нарушения':>9}  {'отсёк код':>9}  {'чужие id':>8}  "
+          f"{'сек/запрос':>10}  {'$/запрос':>9}  {'$ всего':>8}")
+    for model in sorted({r.get("model") for r in rows}, key=str):
+        mine = [r for r in rows if r.get("model") == model and item_of(r)]
+        choice = [r for r in mine if r.get("step", "choice") != "filters"]
+        filters = [r for r in mine if r.get("step") == "filters"]
+        if not choice:
+            continue
+        verdicts = [(item_of(r)["query"],
+                     expect_ok(item_of(r), r.get("outcome"), r.get("shown") or []))
+                    for r in choice]
+        passed = sum(ok for _, ok in verdicts)
+        typo = [ok for q, ok in verdicts if by_query[q].get("typo")]
+        per_query = Counter(q for q, _ in verdicts)
+        runs = min(per_query.get(q["query"], 0) for q in items.values())
+        always = sum(all(ok for q2, ok in verdicts if q2 == q) for q in per_query)
+        reports = [parse_report(item_of(r), r.get("filters"), films) for r in filters]
+        reports = [x for x in reports if x]
+        same = sum(x["same"] for x in reports)
+        real = sum(len(real_violations(item_of(r), r.get("shown") or [], known))
+                   for r in choice)
+        foreign = sum(len(r.get("rejected") or []) for r in mine)
+        cut = sum(len(r.get("violations") or []) for r in mine)
+        seconds = sum(r.get("seconds") or 0 for r in mine) / len(choice)
+        usd = sum(r.get("usd") or 0 for r in mine)
+        parse = f"{same}/{len(reports)} {same / len(reports):.0%}" if reports else "—"
+        typo_cell = f"{sum(typo)}/{len(typo)}" if typo else "—"
+        print(f"{model:14}  {runs:>8}  {passed:>4}/{len(choice):<3} {passed / len(choice):>4.0%}  "
+              f"{typo_cell:>9}  "
+              f"{always:>3}/{len(per_query):<3} {parse:>14}  {real:>9}  {cut:>9}  {foreign:>8}  "
+              f"{seconds:>10.1f}  {usd / len(choice):>9.5f}  {usd:>8.4f}")
 
 
 def main():
@@ -72,9 +136,11 @@ def main():
     if not rows:
         print("Журнал пуст")
         return
+    if "compare" in sys.argv[1:]:
+        compare(rows)
+        return
     table(rows if "all" in sys.argv[1:] else rows[-LAST:])
     summary(rows)
-
 
 if __name__ == "__main__":
     main()

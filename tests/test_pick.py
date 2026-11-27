@@ -57,16 +57,37 @@ class Chat:
         self.completions = Completions(owner)
 
 
+FILTER_FIELDS = {"max_minutes", "year_from", "year_to", "languages",
+                 "exclude_genres", "must_genres"}
+
+
 class Fake:
-    def __init__(self, action, payload=None):
+    """Заглушка клиента. Как в автопроверке: на схему Filters отвечает
+    self.filters (по умолчанию «условий нет»), сценарий action — для выбора.
+    filters_action="invalid" ломает ответ фильтров (проверка запасного пути)."""
+
+    def __init__(self, action, payload=None, filters=None, filters_action=None):
         self.action = action
         self.payload = payload
+        self.filters = filters or {}
+        self.filters_action = filters_action
         self.chat = Chat(self)
         self.calls = []
 
+    def choice_prompts(self):
+        return [c["prompt"] for c in self.calls if c["kind"] == "choice"]
+
     def parse(self, *, messages=None, response_format=None, model=None, **_):
         prompt = "\n".join(str(m.get("content", "")) for m in messages or [])
-        self.calls.append({"prompt": prompt, "model": model, "schema": response_format})
+        fields = set(getattr(response_format, "model_fields", {}) or {})
+        kind = "filters" if fields & FILTER_FIELDS else "choice"
+        self.calls.append({"prompt": prompt, "model": model,
+                           "schema": response_format, "kind": kind})
+        if kind == "filters":
+            if self.filters_action == "invalid":
+                return self._complete(response_format, {"max_minutes": "много"},
+                                      prompt, model)
+            return self._complete(response_format, self.filters, prompt, model)
         if self.action == "connection":
             raise openai.APIConnectionError(request=REQUEST)
         if self.action == "status":
@@ -161,7 +182,7 @@ def test_tags_and_full_catalog_in_prompt(tmp_path, monkeypatch):
     monkeypatch.setattr(kino, "JOURNAL", tmp_path / "calls.jsonl")
     fake = Fake("parsed", picks("a1"))
     kino.pick(fake, "m", "особо-уникальный-запрос", FILMS)
-    prompt = fake.calls[-1]["prompt"]
+    prompt = fake.choice_prompts()[-1]
     assert "<каталог>" in prompt and "</каталог>" in prompt
     assert "<запрос>" in prompt and "особо-уникальный-запрос" in prompt
     assert json.dumps("Альфа", ensure_ascii=False) in prompt

@@ -10,15 +10,16 @@
       "приключения"
     ],
     "countries": [
-      "Франция",
-      "Казахстан"
+      "Казахстан",
+      "Франция"
     ],
     "languages": [
       "русский",
       "казахский"
     ],
     "description": "Эпическая история объединения казахских племён и становления молодого хана.",
-    "source": "https://www.wikidata.org/wiki/Q1325503"
+    "source": "https://www.wikidata.org/wiki/Q1325503",
+    "rotten_tomatoes": 7
   },
   {
     "id": "kz-002",
@@ -37,7 +38,8 @@
       "казахский"
     ],
     "description": "Сотня казахских юношей защищает родную землю от джунгарского нашествия.",
-    "source": "https://www.wikidata.org/wiki/Q3719600"
+    "source": "https://www.wikidata.org/wiki/Q3719600",
+    "rotten_tomatoes": null
   },
   {
     "id": "kz-003",
@@ -57,7 +59,8 @@
     "source": [
       "https://www.wikidata.org/wiki/Q22101272",
       "https://en.wikipedia.org/wiki/Kelin_(film)"
-    ]
+    ],
+    "rotten_tomatoes": null
   },
   {
     "id": "kz-004",
@@ -70,8 +73,8 @@
     ],
     "countries": [
       "Польша",
-      "Россия",
       "Казахстан",
+      "Россия",
       "Израиль"
     ],
     "languages": [
@@ -79,7 +82,8 @@
       "казахский"
     ],
     "description": "Еврейский мальчик из Москвы оказывается в казахском ауле в конце 1940-х.",
-    "source": "https://www.wikidata.org/wiki/Q2658852"
+    "source": "https://www.wikidata.org/wiki/Q2658852",
+    "rotten_tomatoes": 60
   },
   {
     "id": "kz-005",
@@ -96,7 +100,8 @@
       "казахский"
     ],
     "description": "Пожилой пастух отправляется в степь на поиски пропавших овец.",
-    "source": "https://www.wikidata.org/wiki/Q4439869"
+    "source": "https://www.wikidata.org/wiki/Q4439869",
+    "rotten_tomatoes": null
   },
   {
     "id": "kz-006",
@@ -115,7 +120,8 @@
       "французский"
     ],
     "description": "Французский путник встречает загадочную казашку в бескрайней степи.",
-    "source": "https://www.wikidata.org/wiki/Q323778"
+    "source": "https://www.wikidata.org/wiki/Q323778",
+    "rotten_tomatoes": null
   },
   {
     "id": "kz-007",
@@ -126,18 +132,19 @@
       "драма"
     ],
     "countries": [
-      "Польша",
-      "Китай",
+      "Казахстан",
       "Россия",
       "Германия",
-      "Казахстан"
+      "Китай",
+      "Польша"
     ],
     "languages": [
       "русский",
       "киргизский"
     ],
     "description": "Молодая киргизка в Москве разрывается между работой, долгами и новорождённым сыном.",
-    "source": "https://www.wikidata.org/wiki/Q52009401"
+    "source": "https://www.wikidata.org/wiki/Q52009401",
+    "rotten_tomatoes": 80
   },
   {
     "id": "kz-008",
@@ -155,7 +162,8 @@
       "русский"
     ],
     "description": "Жительницу Алматы Сабину похищают в невесты и увозят в аул, где ей приходится привыкать к сельской жизни.",
-    "source": "https://www.wikidata.org/wiki/Q19742946"
+    "source": "https://www.wikidata.org/wiki/Q19742946",
+    "rotten_tomatoes": null
   },
   {
     "id": "ww-001",
@@ -175,7 +183,8 @@
       "английский"
     ],
     "description": "Команда исследователей ищет новый дом для человечества через червоточину.",
-    "source": "https://www.wikidata.org/wiki/Q13417189"
+    "source": "https://www.wikidata.org/wiki/Q13417189",
+    "rotten_tomatoes": 73
   },
   {
     "id": "ww-002",
@@ -188,16 +197,17 @@
       "триллер"
     ],
     "countries": [
-      "США",
-      "Великобритания"
+      "Великобритания",
+      "США"
     ],
     "languages": [
-      "французский",
       "английский",
-      "японский"
+      "японский",
+      "французский"
     ],
     "description": "Вор проникает в сны, чтобы украсть или внедрить идею в чужое сознание.",
-    "source": "https://www.wikidata.org/wiki/Q25188"
+    "source": "https://www.wikidata.org/wiki/Q25188",
+    "rotten_tomatoes": 87
   },
   {
     "id": "ww-003",
@@ -216,7 +226,8 @@
       "английский"
     ],
     "description": "Хакер узнаёт, что реальность — симуляция, и встаёт на путь восстания.",
-    "source": "https://www.wikidata.org/wiki/Q83495"
+    "source": "https://www.wikidata.org/wiki/Q83495",
+    "rotten_tomatoes": 83
   },
   {
     "id": "ww-004",
@@ -236,7 +247,8 @@
       "английский"
     ],
     "description": "Бэтмен сталкивается с Хаосом в лице Джокера, испытывающего Готэм.",
-    "source": "https://www.wikidata.org/wiki/Q163872"
+    "source": "https://www.wikidata.org/wiki/Q163872",
+    "rotten_tomatoes": 94
   },
   {
     "id": "ww-005",
@@ -253,7 +265,8 @@
       "английский"
     ],
     "description": "Несправедливо осуждённый банкир годами готовит побег из тюрьмы.",
-    "source": "https://www.wikidata.org/wiki/Q172241"
+    "source": "https://www.wikidata.org/wiki/Q172241",
+    "rotten_tomatoes": 89
   },
   {
     "id": "ww-006",
@@ -271,7 +284,8 @@
       "английский"
     ],
     "description": "Простой человек проходит через ключевые события американской истории.",
-    "source": "https://www.wikidata.org/wiki/Q134773"
+    "source": "https://www.wikidata.org/wiki/Q134773",
+    "rotten_tomatoes": 75
   },
   {
     "id": "ww-007",
@@ -289,7 +303,8 @@
       "английский"
     ],
     "description": "Переплетённые истории гангстеров, боксёра и случайных героев Лос-Анджелеса.",
-    "source": "https://www.wikidata.org/wiki/Q104123"
+    "source": "https://www.wikidata.org/wiki/Q104123",
+    "rotten_tomatoes": 92
   },
   {
     "id": "ww-008",
@@ -301,14 +316,15 @@
       "приключения"
     ],
     "countries": [
-      "США",
-      "Новая Зеландия"
+      "Новая Зеландия",
+      "США"
     ],
     "languages": [
       "английский"
     ],
     "description": "Хоббит отправляется уничтожить Кольцо Всевластья вместе с союзниками.",
-    "source": "https://www.wikidata.org/wiki/Q127367"
+    "source": "https://www.wikidata.org/wiki/Q127367",
+    "rotten_tomatoes": 91
   },
   {
     "id": "ww-009",
@@ -321,14 +337,15 @@
       "приключения"
     ],
     "countries": [
-      "США",
-      "Великобритания"
+      "Великобритания",
+      "США"
     ],
     "languages": [
       "английский"
     ],
     "description": "Мальчик узнаёт, что он волшебник, и поступает в Хогвартс.",
-    "source": "https://www.wikidata.org/wiki/Q102438"
+    "source": "https://www.wikidata.org/wiki/Q102438",
+    "rotten_tomatoes": 80
   },
   {
     "id": "ww-010",
@@ -347,7 +364,8 @@
       "английский"
     ],
     "description": "Львёнок Симба учится принимать судьбу короля саванны.",
-    "source": "https://www.wikidata.org/wiki/Q36479"
+    "source": "https://www.wikidata.org/wiki/Q36479",
+    "rotten_tomatoes": 92
   },
   {
     "id": "ww-011",
@@ -366,7 +384,8 @@
       "японский"
     ],
     "description": "Девочка попадает в мир духов и ищет способ спасти родителей.",
-    "source": "https://www.wikidata.org/wiki/Q155653"
+    "source": "https://www.wikidata.org/wiki/Q155653",
+    "rotten_tomatoes": 96
   },
   {
     "id": "ww-012",
@@ -385,7 +404,8 @@
       "корейский"
     ],
     "description": "Бедная семья внедряется в дом богачей — и маски начинают спадать.",
-    "source": "https://www.wikidata.org/wiki/Q61448040"
+    "source": "https://www.wikidata.org/wiki/Q61448040",
+    "rotten_tomatoes": 99
   },
   {
     "id": "ww-013",
@@ -403,7 +423,8 @@
       "французский"
     ],
     "description": "Застенчивая парижанка тайно улучшает жизнь окружающих и ищет любовь.",
-    "source": "https://www.wikidata.org/wiki/Q484048"
+    "source": "https://www.wikidata.org/wiki/Q484048",
+    "rotten_tomatoes": 90
   },
   {
     "id": "ww-014",
@@ -419,11 +440,12 @@
       "Италия"
     ],
     "languages": [
-      "немецкий",
-      "итальянский"
+      "итальянский",
+      "немецкий"
     ],
     "description": "Отец превращает ужасы концлагеря в игру, чтобы защитить сына.",
-    "source": "https://www.wikidata.org/wiki/Q19355"
+    "source": "https://www.wikidata.org/wiki/Q19355",
+    "rotten_tomatoes": 81
   },
   {
     "id": "ww-015",
@@ -442,7 +464,8 @@
       "английский"
     ],
     "description": "Немецкий предприниматель спасает евреев, нанимая их на свою фабрику.",
-    "source": "https://www.wikidata.org/wiki/Q483941"
+    "source": "https://www.wikidata.org/wiki/Q483941",
+    "rotten_tomatoes": 98
   },
   {
     "id": "ww-016",
@@ -460,7 +483,8 @@
       "английский"
     ],
     "description": "Любовь сквозь классы на обречённом рейсе «Титаника».",
-    "source": "https://www.wikidata.org/wiki/Q44578"
+    "source": "https://www.wikidata.org/wiki/Q44578",
+    "rotten_tomatoes": 88
   },
   {
     "id": "ww-017",
@@ -479,7 +503,8 @@
       "английский"
     ],
     "description": "Неудачливый комик срывается и становится символом хаоса в Готэме.",
-    "source": "https://www.wikidata.org/wiki/Q42759035"
+    "source": "https://www.wikidata.org/wiki/Q42759035",
+    "rotten_tomatoes": 68
   },
   {
     "id": "ww-018",
@@ -491,14 +516,15 @@
       "приключения"
     ],
     "countries": [
-      "США",
-      "Австралия"
+      "Австралия",
+      "США"
     ],
     "languages": [
       "английский"
     ],
     "description": "Погоня через пустошь, чтобы освободить жён тирана Immortan Joe.",
-    "source": "https://www.wikidata.org/wiki/Q1757288"
+    "source": "https://www.wikidata.org/wiki/Q1757288",
+    "rotten_tomatoes": 97
   },
   {
     "id": "ww-019",
@@ -511,18 +537,19 @@
       "драма"
     ],
     "countries": [
-      "Канада",
-      "Норвегия",
-      "Венгрия",
       "США",
+      "Венгрия",
       "Иордания",
-      "ОАЭ"
+      "ОАЭ",
+      "Норвегия",
+      "Канада"
     ],
     "languages": [
       "английский"
     ],
     "description": "Наследник дома Атрейдес прибывает на пустынную планету Арракис.",
-    "source": "https://www.wikidata.org/wiki/Q60834962"
+    "source": "https://www.wikidata.org/wiki/Q60834962",
+    "rotten_tomatoes": 83
   },
   {
     "id": "ww-020",
@@ -542,7 +569,8 @@
       "английский"
     ],
     "description": "История создателя атомной бомбы и цена научного триумфа.",
-    "source": "https://www.wikidata.org/wiki/Q108839994"
+    "source": "https://www.wikidata.org/wiki/Q108839994",
+    "rotten_tomatoes": 93
   },
   {
     "id": "ww-021",
@@ -559,11 +587,12 @@
     ],
     "languages": [
       "английский",
-      "кантонский",
-      "китайский"
+      "китайский",
+      "кантонский"
     ],
     "description": "Владелица прачечной прыгает по вселенным, чтобы спасти мультивселенную.",
-    "source": "https://www.wikidata.org/wiki/Q83808444"
+    "source": "https://www.wikidata.org/wiki/Q83808444",
+    "rotten_tomatoes": 93
   },
   {
     "id": "ww-022",
@@ -582,7 +611,8 @@
       "английский"
     ],
     "description": "Детектив расследует убийство писателя среди жадных наследников.",
-    "source": "https://www.wikidata.org/wiki/Q57982486"
+    "source": "https://www.wikidata.org/wiki/Q57982486",
+    "rotten_tomatoes": 97
   },
   {
     "id": "ww-023",
@@ -601,7 +631,8 @@
       "английский"
     ],
     "description": "Актриса и джазовый музыкант ищут успех и любовь в Лос-Анджелесе.",
-    "source": "https://www.wikidata.org/wiki/Q20856802"
+    "source": "https://www.wikidata.org/wiki/Q20856802",
+    "rotten_tomatoes": 91
   },
   {
     "id": "ww-024",
@@ -613,17 +644,18 @@
       "комедия"
     ],
     "countries": [
-      "Япония",
-      "США"
+      "США",
+      "Япония"
     ],
     "languages": [
-      "французский",
-      "немецкий",
       "английский",
-      "японский"
+      "японский",
+      "французский",
+      "немецкий"
     ],
     "description": "Двое американцев случайно сближаются в ночном Токио.",
-    "source": "https://www.wikidata.org/wiki/Q107270"
+    "source": "https://www.wikidata.org/wiki/Q107270",
+    "rotten_tomatoes": 95
   },
   {
     "id": "ww-025",
@@ -639,11 +671,12 @@
       "США"
     ],
     "languages": [
-      "итальянский",
-      "английский"
+      "английский",
+      "итальянский"
     ],
     "description": "Вышибала возит чернокожего пианиста по сегрегированному Югу США.",
-    "source": "https://www.wikidata.org/wiki/Q48673898"
+    "source": "https://www.wikidata.org/wiki/Q48673898",
+    "rotten_tomatoes": 77
   },
   {
     "id": "kz-009",
@@ -655,18 +688,19 @@
       "комедия"
     ],
     "countries": [
-      "Польша",
-      "Швейцария",
+      "Казахстан",
       "Россия",
       "Германия",
-      "Казахстан"
+      "Швейцария",
+      "Польша"
     ],
     "languages": [
-      "русский",
-      "казахский"
+      "казахский",
+      "русский"
     ],
     "description": "Молодой пастух возвращается в степь и учится жить рядом с семьёй брата.",
-    "source": "https://www.wikidata.org/wiki/Q584029"
+    "source": "https://www.wikidata.org/wiki/Q584029",
+    "rotten_tomatoes": 96
   },
   {
     "id": "kz-010",
@@ -685,7 +719,8 @@
       "казахский"
     ],
     "description": "Алматинский парень втягивается в бандитские 1990-е и платит за выбор.",
-    "source": "https://www.wikidata.org/wiki/Q4402211"
+    "source": "https://www.wikidata.org/wiki/Q4402211",
+    "rotten_tomatoes": null
   },
   {
     "id": "ru-001",
@@ -701,12 +736,13 @@
       "Россия"
     ],
     "languages": [
+      "русский",
       "французский",
-      "английский",
-      "русский"
+      "английский"
     ],
     "description": "Демобилизованный Данила Багров попадает в криминальный Петербург.",
-    "source": "https://www.wikidata.org/wiki/Q1192679"
+    "source": "https://www.wikidata.org/wiki/Q1192679",
+    "rotten_tomatoes": 100
   },
   {
     "id": "ru-002",
@@ -723,7 +759,8 @@
       "русский"
     ],
     "description": "Житель северного города борется с мэром за свой дом и достоинство.",
-    "source": "https://www.wikidata.org/wiki/Q15972383"
+    "source": "https://www.wikidata.org/wiki/Q15972383",
+    "rotten_tomatoes": 97
   },
   {
     "id": "ru-003",
@@ -741,7 +778,8 @@
       "русский"
     ],
     "description": "Машина времени путает инженера, управдома и Ивана Грозного.",
-    "source": "https://www.wikidata.org/wiki/Q777739"
+    "source": "https://www.wikidata.org/wiki/Q777739",
+    "rotten_tomatoes": null
   },
   {
     "id": "ru-004",
@@ -760,7 +798,8 @@
       "русский"
     ],
     "description": "Три подруги строят жизнь в Москве — от общежития до карьеры.",
-    "source": "https://www.wikidata.org/wiki/Q53105"
+    "source": "https://www.wikidata.org/wiki/Q53105",
+    "rotten_tomatoes": 40
   },
   {
     "id": "ru-005",
@@ -778,7 +817,8 @@
       "русский"
     ],
     "description": "Проводник ведёт писателя и учёного в Зону к комнате исполнения желаний.",
-    "source": "https://www.wikidata.org/wiki/Q200437"
+    "source": "https://www.wikidata.org/wiki/Q200437",
+    "rotten_tomatoes": 100
   },
   {
     "id": "ru-006",
@@ -794,13 +834,14 @@
       "Россия"
     ],
     "languages": [
-      "немецкий",
-      "финский",
       "русский",
-      "северносаамский"
+      "финский",
+      "северносаамский",
+      "немецкий"
     ],
     "description": "Саами, финн и русский солдат учатся понимать друг друга без общего языка.",
-    "source": "https://www.wikidata.org/wiki/Q387140"
+    "source": "https://www.wikidata.org/wiki/Q387140",
+    "rotten_tomatoes": 87
   },
   {
     "id": "ww-026",
@@ -818,7 +859,8 @@
       "английский"
     ],
     "description": "Лингвистка пытается расшифровать язык пришельцев до начала войны.",
-    "source": "https://www.wikidata.org/wiki/Q20382729"
+    "source": "https://www.wikidata.org/wiki/Q20382729",
+    "rotten_tomatoes": 94
   },
   {
     "id": "ww-027",
@@ -837,7 +879,8 @@
       "английский"
     ],
     "description": "Астронавт выживает на Марсе с помощью науки и упрямства.",
-    "source": "https://www.wikidata.org/wiki/Q18547944"
+    "source": "https://www.wikidata.org/wiki/Q18547944",
+    "rotten_tomatoes": 91
   },
   {
     "id": "ww-028",
@@ -857,7 +900,8 @@
       "английский"
     ],
     "description": "Двое астронавтов борются за жизнь после катастрофы на орбите.",
-    "source": "https://www.wikidata.org/wiki/Q2579784"
+    "source": "https://www.wikidata.org/wiki/Q2579784",
+    "rotten_tomatoes": 96
   },
   {
     "id": "ww-029",
@@ -876,7 +920,8 @@
       "английский"
     ],
     "description": "Одинокий писатель влюбляется в операционную систему с женским голосом.",
-    "source": "https://www.wikidata.org/wiki/Q788822"
+    "source": "https://www.wikidata.org/wiki/Q788822",
+    "rotten_tomatoes": 94
   },
   {
     "id": "ww-030",
@@ -894,7 +939,8 @@
       "английский"
     ],
     "description": "Рождение Facebook и судебные войны вокруг дружбы и доли.",
-    "source": "https://www.wikidata.org/wiki/Q185888"
+    "source": "https://www.wikidata.org/wiki/Q185888",
+    "rotten_tomatoes": 96
   },
   {
     "id": "ww-031",
@@ -912,7 +958,8 @@
       "английский"
     ],
     "description": "Бывший киллер возвращается, когда у него крадут машину и убивают собаку.",
-    "source": "https://www.wikidata.org/wiki/Q15732802"
+    "source": "https://www.wikidata.org/wiki/Q15732802",
+    "rotten_tomatoes": 86
   },
   {
     "id": "ww-032",
@@ -932,7 +979,8 @@
       "американский жестовый"
     ],
     "description": "Семья выживает в мире, где любой звук привлекает смертоносных тварей.",
-    "source": "https://www.wikidata.org/wiki/Q39070473"
+    "source": "https://www.wikidata.org/wiki/Q39070473",
+    "rotten_tomatoes": 96
   },
   {
     "id": "ww-033",
@@ -951,7 +999,8 @@
       "английский"
     ],
     "description": "Бланк расследует смерть на частном острове среди эксцентричных гостей.",
-    "source": "https://www.wikidata.org/wiki/Q84712797"
+    "source": "https://www.wikidata.org/wiki/Q84712797",
+    "rotten_tomatoes": 92
   },
   {
     "id": "ww-034",
@@ -971,7 +1020,8 @@
       "английский"
     ],
     "description": "Девушка оказывается в замке заколдованного принца и меняет его судьбу.",
-    "source": "https://www.wikidata.org/wiki/Q179673"
+    "source": "https://www.wikidata.org/wiki/Q179673",
+    "rotten_tomatoes": 95
   },
   {
     "id": "ww-035",
@@ -991,7 +1041,8 @@
       "английский"
     ],
     "description": "Пожилой вдовец привязывает к дому шары и летит к водопаду мечты.",
-    "source": "https://www.wikidata.org/wiki/Q174811"
+    "source": "https://www.wikidata.org/wiki/Q174811",
+    "rotten_tomatoes": 98
   },
   {
     "id": "ww-036",
@@ -1010,7 +1061,8 @@
       "английский"
     ],
     "description": "Монстры пугают детей ради энергии — пока в мир монстров не попадает малышка.",
-    "source": "https://www.wikidata.org/wiki/Q187726"
+    "source": "https://www.wikidata.org/wiki/Q187726",
+    "rotten_tomatoes": 96
   },
   {
     "id": "ww-037",
@@ -1030,7 +1082,8 @@
       "английский"
     ],
     "description": "Огр отправляется спасать принцессу и обнаруживает, что сказки врут.",
-    "source": "https://www.wikidata.org/wiki/Q483815"
+    "source": "https://www.wikidata.org/wiki/Q483815",
+    "rotten_tomatoes": 89
   },
   {
     "id": "ww-038",
@@ -1050,7 +1103,8 @@
       "английский"
     ],
     "description": "Юный викинг дружит с драконом и меняет правила своего племени.",
-    "source": "https://www.wikidata.org/wiki/Q373096"
+    "source": "https://www.wikidata.org/wiki/Q373096",
+    "rotten_tomatoes": 99
   },
   {
     "id": "ww-039",
@@ -1070,7 +1124,8 @@
       "английский"
     ],
     "description": "Крольчиха-полицейский и хитрый лис распутывают заговор в городе зверей.",
-    "source": "https://www.wikidata.org/wiki/Q15270647"
+    "source": "https://www.wikidata.org/wiki/Q15270647",
+    "rotten_tomatoes": 98
   },
   {
     "id": "ww-040",
@@ -1090,6 +1145,7 @@
       "английский"
     ],
     "description": "Джазовый пианист попадает в мир до рождения и ищет смысл жизни.",
-    "source": "https://www.wikidata.org/wiki/Q64744044"
+    "source": "https://www.wikidata.org/wiki/Q64744044",
+    "rotten_tomatoes": 95
   }
 ]
