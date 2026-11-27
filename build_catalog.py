@@ -42,6 +42,9 @@ HEADERS = {"User-Agent": "kinomanyak-catalog/0.1 (educational project)"}
 QID = re.compile(r"wikidata\.org/wiki/(Q\d+)")
 BATCH = 50  # wbgetentities отдаёт до 50 сущностей за запрос
 ROTTEN_TOMATOES = "Q105584"
+# У Rotten Tomatoes два процента с одним P447: оценка критиков и зрителей.
+# Различает их только квалификатор P459 (метод оценки). Берём критиков.
+TOMATOMETER = "Q108403393"
 UNIT_FACTOR = {  # единица P2047 → множитель в минуты
     "http://www.wikidata.org/entity/Q7727": 1,       # минута
     "http://www.wikidata.org/entity/Q25235": 60,     # час
@@ -134,13 +137,15 @@ def facts_of(entity: dict, labels: dict[str, str]) -> dict:
         country_word(labels[value(c)["id"]]) for c in best(claims.get("P495", []))))
     languages = list(dict.fromkeys(
         language_word(labels[value(c)["id"]]) for c in best(claims.get("P364", []))))
-    rating = None
-    for c in best(claims.get("P444", [])):
-        by = [q["datavalue"]["value"]["id"] for q in c.get("qualifiers", {}).get("P447", [])
-              if q.get("snaktype") == "value"]
-        score = str(value(c))
-        if ROTTEN_TOMATOES in by and score.endswith("%"):
-            rating = int(score.rstrip("%"))
+    # Сначала отбираем Tomatometer, потом лучший ранг среди них: в P444 оценки всех
+    # сайтов, и preferred у IMDb не должен прятать обычный ранг Rotten Tomatoes.
+    tomatometer = [c for c in claims.get("P444", [])
+                   if ROTTEN_TOMATOES in qualifier_ids(c, "P447")
+                   and TOMATOMETER in qualifier_ids(c, "P459")]
+    ratings = {int(str(value(c)).rstrip("%")) for c in best(tomatometer)
+               if str(value(c)).endswith("%")}
+    # Несколько разных Tomatometer — не угадываем, а просим решить через OVERRIDES.
+    rating = ratings.pop() if len(ratings) == 1 else None
     return {
         "year": min(years) if years else None,
         "minutes": min(minutes) if minutes else None,
@@ -148,7 +153,13 @@ def facts_of(entity: dict, labels: dict[str, str]) -> dict:
         "languages": languages or None,
         "rotten_tomatoes": rating,
         "_many_minutes": sorted(set(minutes)) if len(set(minutes)) > 1 else None,
+        "_many_ratings": sorted(ratings) if len(ratings) > 1 else None,
     }
+
+
+def qualifier_ids(claim: dict, prop: str) -> list[str]:
+    return [q["datavalue"]["value"]["id"] for q in claim.get("qualifiers", {}).get(prop, [])
+            if q.get("snaktype") == "value"]
 
 
 def sources(film: dict) -> list[str]:
@@ -178,7 +189,7 @@ def main() -> None:
     for film in films:
         fact = facts_of(found[qids[film["id"]]], labels)
         override = OVERRIDES.get(film["id"], {})
-        for field in ("year", "minutes", "countries", "languages"):
+        for field in ("year", "minutes", "countries", "languages", "rotten_tomatoes"):
             if field in override:
                 fact[field] = override[field]
         extra = override.get("source")
@@ -188,6 +199,9 @@ def main() -> None:
         notes = []
         if fact["_many_minutes"] and "minutes" not in override:
             notes.append(f"несколько длительностей {fact['_many_minutes']}, взята меньшая")
+        if fact["_many_ratings"] and "rotten_tomatoes" not in override:
+            notes.append(f"несколько Tomatometer {fact['_many_ratings']} — нужен OVERRIDES")
+            problems += 1
         for field in ("year", "minutes", "countries", "languages", "rotten_tomatoes"):
             new = fact[field]
             if new is None and field != "rotten_tomatoes":
