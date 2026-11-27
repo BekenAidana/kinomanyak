@@ -137,12 +137,13 @@ def facts_of(entity: dict, labels: dict[str, str]) -> dict:
         country_word(labels[value(c)["id"]]) for c in best(claims.get("P495", []))))
     languages = list(dict.fromkeys(
         language_word(labels[value(c)["id"]]) for c in best(claims.get("P364", []))))
-    ratings = set()
-    for c in best(claims.get("P444", [])):
-        score = str(value(c))
-        if (ROTTEN_TOMATOES in qualifier_ids(c, "P447")
-                and TOMATOMETER in qualifier_ids(c, "P459") and score.endswith("%")):
-            ratings.add(int(score.rstrip("%")))
+    # Сначала отбираем Tomatometer, потом лучший ранг среди них: в P444 оценки всех
+    # сайтов, и preferred у IMDb не должен прятать обычный ранг Rotten Tomatoes.
+    tomatometer = [c for c in claims.get("P444", [])
+                   if ROTTEN_TOMATOES in qualifier_ids(c, "P447")
+                   and TOMATOMETER in qualifier_ids(c, "P459")]
+    ratings = {int(str(value(c)).rstrip("%")) for c in best(tomatometer)
+               if str(value(c)).endswith("%")}
     # Несколько разных Tomatometer — не угадываем, а просим решить через OVERRIDES.
     rating = ratings.pop() if len(ratings) == 1 else None
     return {

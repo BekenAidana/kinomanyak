@@ -29,3 +29,17 @@ def test_conflicting_tomatometers_are_reported_not_guessed():
     fact = rating(rt_claim("91%", bc.TOMATOMETER), rt_claim("89%", bc.TOMATOMETER))
     assert fact["rotten_tomatoes"] is None
     assert fact["_many_ratings"] == [89, 91]
+
+
+def test_preferred_rank_of_other_site_does_not_hide_tomatometer():
+    imdb = {"rank": "preferred",
+            "mainsnak": {"snaktype": "value", "datavalue": {"value": "8.8/10"}},
+            "qualifiers": {"P447": [{"snaktype": "value", "datavalue": {"value": {"id": "Q37312"}}}]}}
+    assert rating(imdb, rt_claim("91%", bc.TOMATOMETER))["rotten_tomatoes"] == 91
+
+
+def test_preferred_tomatometer_beats_normal_one():
+    old = rt_claim("89%", bc.TOMATOMETER)
+    new = dict(rt_claim("91%", bc.TOMATOMETER), rank="preferred")
+    fact = rating(old, new)
+    assert fact["rotten_tomatoes"] == 91 and fact["_many_ratings"] is None
