@@ -27,6 +27,9 @@ import openai
 from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
+# импорт здесь, а не в candidates: в свежем окружении он дорогой (компиляция),
+# а лимит автопроверки E02 (20 с) меряет только вызов candidates
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 load_dotenv()
 
@@ -39,6 +42,7 @@ LIMIT = 4000
 PRICE = {"gpt-6-luna": (0.10, 0.50), "gpt-6-astra": (10.00, 50.00)}
 ROOT = Path(__file__).resolve().parent
 FILMS_PATH = ROOT / "films.json"
+FILMS_BIG_PATH = ROOT / "films_big.json"  # Epic: uv run kino.py --big "запрос"
 JOURNAL = ROOT / "calls.jsonl"  # append-only журнал для show.py / сдачи
 MAX_PICKS = 3
 MAX_MUST_GENRES = 3  # больше обязательных жанров = модель перечислила словарь
@@ -85,6 +89,9 @@ class Choice(BaseModel):
 # делает код (apply_filters, sanitize_picks). None = «условия нет».
 class Filters(BaseModel):
     max_minutes: int | None = None
+    # сверх полей инструкции — вторые границы: без них «длиннее двух часов» или
+    # «рейтинг ниже 50%» модель записывала в max_minutes / min_rating — наоборот
+    min_minutes: int | None = None
     year_from: int | None = None
     year_to: int | None = None
     languages: list[str] | None = None
@@ -92,6 +99,7 @@ class Filters(BaseModel):
     must_genres: list[str] | None = None
     # сверх полей инструкции: Tomatometer Rotten Tomatoes из Wikidata, 0–100
     min_rating: int | None = None
+    max_rating: int | None = None
     # доказательство для languages: фраза из запроса дословно, как написал человек
     # («на казахкском», «казакша»). Опечатки понимает модель, сверяет код.
     language_quote: str | None = None
@@ -102,10 +110,13 @@ FILTER_INSTRUCTIONS = """Ты разбираешь запрос о фильме 
 Запрос бывает на русском или казахском.
 
 Поля (null — условия нет):
-- max_minutes: предел длительности в минутах. «до двух часов» → 120, «до полутора часов»,
-  «бір жарым сағаттан қысқа» → 90.
+- max_minutes / min_minutes: длительность в минутах. Смотри на НАПРАВЛЕНИЕ:
+  «до», «меньше», «короче», «не дольше», «қысқа» → max_minutes («до двух часов» → 120,
+  «бір жарым сағаттан қысқа» → 90);
+  «от», «больше», «длиннее», «не короче», «дольше», «ұзақ» → min_minutes («длиннее двух часов» → 120).
 - year_from, year_to: годы выхода, только если в запросе есть год или десятилетие.
   «90-х» → 1990 и 1999; «после 2015 года» → year_from 2016; «снятый до 2020» → year_to 2019;
+  «старше 2000 года» = снят раньше → year_to 1999; «не старше 2015 года», «новее 2015» → year_from 2015;
   один конкретный год («2031 года», «1890 жылғы») → year_from и year_to оба равны этому году.
 - languages: язык фильма, только если назван оборотом языка: «на казахском», «по-английски»,
   «қазақша», «қазақ тілінде». Прилагательное страны («казахстанский», «французская»,
@@ -113,9 +124,10 @@ FILTER_INSTRUCTIONS = """Ты разбираешь запрос о фильме 
 - must_genres: жанры, которые запрос прямо требует: «мультфильм», «комедия», «детектив».
 - exclude_genres: жанры после «не», «без», «кроме» (по-русски отрицание стоит ПЕРЕД словом)
   и перед «емес» (по-казахски — ПОСЛЕ слова): «комедия емес» → ["комедия"].
-- min_rating: рейтинг критиков Rotten Tomatoes в процентах, только если запрос про рейтинг или
-  отзывы критиков: «хвалят критики», «с высоким рейтингом», «сыншылар мақтаған» → 80;
-  «рейтинг выше 90%» → 90.
+- min_rating / max_rating: рейтинг критиков Rotten Tomatoes в процентах, только если запрос про
+  рейтинг или отзывы критиков. «хвалят критики», «с высоким рейтингом», «сыншылар мақтаған» →
+  min_rating 80; «рейтинг выше 90%» → min_rating 90; «рейтинг ниже 50%», «не выше 50%» →
+  max_rating 50; «разгромили критики», «провальный» → max_rating 40.
 - language_quote: если languages не null — фраза из запроса, где назван язык, ДОСЛОВНО,
   как написал пользователь, с его опечатками: «на англиском», «казакша». Иначе null.
 Люди пишут с опечатками и сленгом — пойми смысл и пиши слова каталога:
@@ -139,6 +151,12 @@ FILTER_INSTRUCTIONS = """Ты разбираешь запрос о фильме 
 {"max_minutes": null, "year_from": 1980, "year_to": 1989, "languages": null,
 "exclude_genres": ["ужасы"], "must_genres": ["боевик"], "min_rating": null,
 "language_quote": null}
+
+Пример 4 (направление: «длиннее» и «ниже»):
+<запрос>драма длиннее двух с половиной часов, рейтинг ниже 60%</запрос>
+{"min_minutes": 150, "max_minutes": null, "year_from": null, "year_to": null,
+"languages": null, "exclude_genres": null, "must_genres": ["драма"],
+"min_rating": null, "max_rating": 60, "language_quote": null}
 
 Пример 3 (казахский запрос, «емес» после слова):
 <запрос>күлкілі емес, казакша әуенді фильм</запрос>
@@ -166,7 +184,7 @@ def build_filters_prompt(query: str, films: list[dict[str, Any]]) -> str:
 # «на итальянском языке», «қазақша», «қазақ тілінде». Прилагательное страны
 # («французская комедия», «казахстанское кино») — не язык.
 LANGUAGE_CUES = [r"\bна\s+(\w+)", r"\bпо-(\w+)", r"(\w+)\s+язык", r"(\w+(?:ша|ше))\b",
-                 r"(\w+)\s+тіл"]
+                 r"(\w+)\s+тіл", r"\bin\s+(\w+)"]
 # казахские основы названий языков (русская основа = слово каталога без «-кий»)
 KAZAKH_STEMS = {"казахский": "қазақ", "русский": "орыс", "английский": "ағылшын",
                 "французский": "француз", "итальянский": "итальян", "японский": "жапон",
@@ -177,12 +195,13 @@ def language_named(language: str, query: str) -> bool:
     """Назван ли язык в запросе языковым оборотом (а не прилагательным страны)."""
     words = {w.lower() for cue in LANGUAGE_CUES
              for w in re.findall(cue, query, re.IGNORECASE)}
-    stems = [language[:-3]] + ([KAZAKH_STEMS[language]] if language in KAZAKH_STEMS else [])
-    return any(w.startswith(stem) for w in words for stem in stems)
+    stems = [language[:-3], KAZAKH_STEMS.get(language, ""), LATIN_STEMS.get(language, "")]
+    return any(w.startswith(stem) for w in words for stem in stems if stem)
 
 
 # Цитата-доказательство: код не «понимает» язык, а проверяет три простые вещи.
-LANGUAGE_SHAPE = re.compile(r"\bна\s+\w|\bпо[-\s]\w|язык|\w(?:ша|ше|sha|she)\b|тіл", re.I)
+LANGUAGE_SHAPE = re.compile(r"\bна\s+\w|\bпо[-\s]\w|язык|\w(?:ша|ше|sha|she)\b|тіл|\bin\s+\w",
+                            re.I)
 LATIN_STEMS = {"казахский": "kaz", "русский": "rus", "английский": "eng",
                "французский": "fre", "итальянский": "ita", "японский": "jap",
                "корейский": "kor", "немецкий": "ger", "китайский": "chi"}
@@ -263,10 +282,21 @@ def normalize_filters(filters: Filters, films: list[dict[str, Any]],
     def positive(value: int | None) -> int | None:
         return value if value is not None and value > 0 else None
 
-    rating = filters.min_rating
-    if rating is not None and 0 < rating <= 10:
-        rating *= 10  # «рейтинг выше 8» — модель могла написать по шкале из 10
-    rating = rating if rating is not None and 0 < rating <= 100 else None
+    def percent(rating: int | None) -> int | None:
+        if rating is not None and 0 < rating <= 10:
+            rating *= 10  # «рейтинг выше 8» — модель могла написать по шкале из 10
+        return rating if rating is not None and 0 < rating <= 100 else None
+
+    def pair(low: int | None, high: int | None) -> tuple[int | None, int | None]:
+        """Невозможная пара (нижняя граница выше верхней) — какое из чисел перевёрнуто,
+        код не знает: отбрасываем обе, чем отобрать заведомо пустое."""
+        if low is not None and high is not None and low > high:
+            return None, None
+        return low, high
+
+    min_minutes, max_minutes = pair(positive(filters.min_minutes), positive(filters.max_minutes))
+    year_from, year_to = pair(positive(filters.year_from), positive(filters.year_to))
+    min_rating, max_rating = pair(percent(filters.min_rating), percent(filters.max_rating))
 
     exclude = keep(filters.exclude_genres, genres)
     must = keep(filters.must_genres, genres)
@@ -281,19 +311,23 @@ def normalize_filters(filters: Filters, films: list[dict[str, Any]],
         named = [x for x in named
                  if language_evidence(x, query, filters.language_quote)] or None
     return Filters(
-        max_minutes=positive(filters.max_minutes),
-        year_from=positive(filters.year_from),
-        year_to=positive(filters.year_to),
+        max_minutes=max_minutes,
+        min_minutes=min_minutes,
+        year_from=year_from,
+        year_to=year_to,
         languages=named,
         exclude_genres=exclude,
         must_genres=must,
-        min_rating=rating,
+        min_rating=min_rating,
+        max_rating=max_rating,
     )
 
 
 def passes(film: dict[str, Any], filters: Filters) -> bool:
     """Подходит ли фильм под условия. Проверка кодом, не словами в промпте."""
     if filters.max_minutes is not None and film["minutes"] > filters.max_minutes:
+        return False
+    if filters.min_minutes is not None and film["minutes"] < filters.min_minutes:
         return False
     if filters.year_from is not None and film["year"] < filters.year_from:
         return False
@@ -306,10 +340,14 @@ def passes(film: dict[str, Any], filters: Filters) -> bool:
         return False
     if filters.must_genres and not set(filters.must_genres) <= genres:
         return False
-    if filters.min_rating is not None:
+    if filters.min_rating is not None or filters.max_rating is not None:
         rating = film.get("rotten_tomatoes")
         # рейтинга нет в источнике → условие проверить нечем → фильм не проходит
-        if rating is None or rating < filters.min_rating:
+        if rating is None:
+            return False
+        if filters.min_rating is not None and rating < filters.min_rating:
+            return False
+        if filters.max_rating is not None and rating > filters.max_rating:
             return False
     return True
 
@@ -319,6 +357,8 @@ def describe(filters: Filters) -> str:
     parts = []
     if filters.max_minutes:
         parts.append(f"до {filters.max_minutes} мин")
+    if filters.min_minutes:
+        parts.append(f"от {filters.min_minutes} мин")
     if filters.year_from and filters.year_to:
         parts.append(f"{filters.year_from}–{filters.year_to}")
     elif filters.year_from:
@@ -333,6 +373,8 @@ def describe(filters: Filters) -> str:
         parts.append("без: " + ", ".join(filters.exclude_genres))
     if filters.min_rating:
         parts.append(f"Rotten Tomatoes от {filters.min_rating}%")
+    if filters.max_rating:
+        parts.append(f"Rotten Tomatoes до {filters.max_rating}%")
     return "; ".join(parts) or "нет"
 
 
@@ -400,9 +442,15 @@ def log(model: str, request: str, outcome: str, started: float,
     return row
 
 
-def build_request(query: str, films: list[dict[str, Any]]) -> tuple[str, str]:
-    """Промпт для модели и компактная запись в журнал."""
-    catalog_json = json.dumps(films, ensure_ascii=False)
+def build_request(query: str, films: list[dict[str, Any]],
+                  compact: bool = False) -> tuple[str, str]:
+    """Промпт для модели и компактная запись в журнал.
+
+    compact (Epic): без поля source — ссылка на источник нужна ментору, не модели;
+    на 1500 фильмах она раздувает каталог в промпте с 219 до 362 тыс. токенов.
+    """
+    shown = [{k: v for k, v in f.items() if k != "source"} for f in films] if compact else films
+    catalog_json = json.dumps(shown, ensure_ascii=False)
     prompt = f"<каталог>{catalog_json}</каталог>\n<запрос>{query}</запрос>"
     journal_request = (
         f"<запрос>{query}</запрос>\n"
@@ -616,7 +664,7 @@ FATAL = ("no_connection", "error_")
 
 
 def read_filters(client, model: str, query: str, films: list[dict[str, Any]],
-                 effort: str) -> tuple[Filters | None, str | None]:
+                 effort: str, **extra) -> tuple[Filters | None, str | None]:
     """Шаг 1 (Rare): запрос → Filters. Строка журнала со step="filters".
 
     Сломанный ответ фильтров (invalid / refusal / length) не ломает подбор:
@@ -629,39 +677,28 @@ def read_filters(client, model: str, query: str, films: list[dict[str, Any]],
         Filters, effort)
     if outcome and outcome.startswith(FATAL):
         log(model, f"<запрос>{query}</запрос>", outcome, started, completion,
-            error=error, step="filters", **config(effort))
+            error=error, step="filters", **config(effort), **extra)
         return None, outcome
     filters = normalize_filters(parsed, films, query) if parsed else Filters()
     log(model, f"<запрос>{query}</запрос>", outcome or "ok", started, completion,
-        error=error, step="filters", **config(effort),
+        error=error, step="filters", **config(effort), **extra,
         filters=filters.model_dump(exclude_none=True))
     return filters, None
 
 
-def pick(client, model: str, query: str, films: list[dict[str, Any]],
-         effort: str = "none") -> tuple[str, list]:
-    """Главный поток (как cook у ментора), Rare — в два вызова.
+def choose(client, model: str, query: str, films: list[dict[str, Any]], effort: str,
+           candidates: list[dict[str, Any]], filters: Filters, compact: bool = False,
+           **extra) -> tuple[str, list]:
+    """Шаг выбора — общий для pick, pick_big и «весь каталог в промпте».
 
-      1. Filters: модель разбирает запрос в условия (read_filters).
-      2. Код отбирает кандидатов (apply_filters); пусто → no_match без вызова.
-      3. Choice: модель выбирает только среди кандидатов.
-      4. Код сверяет каждый фильм ответа: чужой id → invalid; фильм не проходит
-         passes(film, filters) → violations, на экран не идёт; повтор, ≤3.
-
-    Возвращает (outcome, ids). Кроме ok ids всегда [].
-    films передаёт вызывающий — pick сам файл не читает.
+    Модель видит только candidates; код сверяет каждый фильм ответа: чужой id
+    (нет в films) → invalid; фильм не проходит passes(film, filters) → violations,
+    на экран не идёт; повтор схлопывается; не больше трёх.
     """
-    print(f"\nМодель {model}")
     known = by_id(films)
-    filters, fatal = read_filters(client, model, query, films, effort)
-    if fatal:
-        return fatal, []
-    print(f"Условия: {describe(filters)}")
-
     started = time.time()
-    candidates = apply_filters(films, filters)
-    prompt, journal_request = build_request(query, candidates)
-    step = {"step": "choice", **config(effort),
+    prompt, journal_request = build_request(query, candidates, compact)
+    step = {"step": "choice", **config(effort), **extra,
             "filters": filters.model_dump(exclude_none=True),
             "candidates": len(candidates)}
     if not candidates:
@@ -705,15 +742,151 @@ def pick(client, model: str, query: str, films: list[dict[str, Any]],
     return "ok", shown
 
 
+def pick(client, model: str, query: str, films: list[dict[str, Any]],
+         effort: str = "none") -> tuple[str, list]:
+    """Главный поток (как cook у ментора), Rare — в два вызова.
+
+      1. Filters: модель разбирает запрос в условия (read_filters).
+      2. Код отбирает кандидатов (apply_filters); пусто → no_match без вызова.
+      3. Choice: модель выбирает только среди кандидатов (choose).
+      4. Код сверяет каждый фильм ответа: чужой id → invalid; фильм не проходит
+         passes(film, filters) → violations, на экран не идёт; повтор, ≤3.
+
+    Возвращает (outcome, ids). Кроме ok ids всегда [].
+    films передаёт вызывающий — pick сам файл не читает.
+    """
+    print(f"\nМодель {model}")
+    filters, fatal = read_filters(client, model, query, films, effort)
+    if fatal:
+        return fatal, []
+    print(f"Условия: {describe(filters)}")
+    return choose(client, model, query, films, effort,
+                  apply_filters(films, filters), filters)
+
+
+# --- Epic: каталог больше разумного промпта ---
+# candidates отбирает K фильмов БЕЗ языковой модели: фильтры по полям + поиск
+# по описаниям. Описания русские (build_big.py), поэтому TF-IDF из лекции 1
+# работает на русских запросах; символьные n-граммы переживают окончания
+# («космос» / «космосе») и опечатки; казахские слова расширяются глоссарием.
+K = 30
+KAZAKH_WORDS = {  # основа казахского слова → русские слова для поиска
+    "тарихи": "исторический история", "әуен": "мюзикл музыка", "музыкалық": "мюзикл музыка",
+    "отбасы": "семейный семья", "қорқынышты": "ужасы", "соғыс": "военный война",
+    "күлкі": "комедия", "қазақ": "казахский Казахстан", "казак": "казахский Казахстан",
+    "жапон": "японский Япония", "ғарыш": "космос", "махаббат": "мелодрама любовь",
+    "балалар": "семейный дети", "мультфильм": "мультфильм", "аниме": "мультфильм аниме",
+}
+# английское слово → слова каталога (жанры, страны) для запросов на английском
+ENGLISH_WORDS = {
+    "comed": "комедия", "funny": "комедия", "horror": "ужасы", "scary": "ужасы",
+    "cartoon": "мультфильм", "animat": "мультфильм", "anime": "мультфильм аниме",
+    "drama": "драма", "thriller": "триллер", "war": "военный война", "histor": "исторический",
+    "sci": "фантастика", "space": "космос фантастика", "fantasy": "фэнтези",
+    "family": "семейный семья", "kid": "семейный дети", "children": "семейный дети",
+    "detective": "детектив", "mystery": "детектив", "crime": "криминал", "romanc": "мелодрама",
+    "love": "мелодрама любовь", "musical": "мюзикл", "documentar": "документальный",
+    "biograph": "биография", "biopic": "биография", "adventur": "приключения", "action": "боевик",
+    "american": "США", "soviet": "СССР", "russian": "Россия", "kazakh": "Казахстан",
+    "japanese": "Япония", "korean": "Южная Корея", "french": "Франция", "italian": "Италия",
+    "british": "Великобритания", "german": "Германия", "indian": "Индия",
+}
+# прилагательное страны → как страна записана в каталоге (поиск идёт и по countries)
+COUNTRY_WORDS = {
+    "советск": "СССР", "казахстанск": "Казахстан", "американск": "США", "русск": "Россия",
+    "российск": "Россия", "японск": "Япония", "корейск": "Южная Корея", "французск": "Франция",
+    "итальянск": "Италия", "британск": "Великобритания", "английск": "Великобритания",
+    "немецк": "Германия", "индийск": "Индия", "испанск": "Испания", "китайск": "Китай",
+}
+NEGATION = re.compile(r"(^|\s)(не|без|кроме|емес|жоқ|not|no|without|except)(\s|$)", re.IGNORECASE)
+_INDEX: dict = {}
+
+
+def search_text(query: str) -> str:
+    """Текст для поиска: части запроса с отрицанием выкидываем («но не про космос»
+    не должно поднимать фильмы про космос), казахские слова расширяем."""
+    parts = [p for p in re.split(r"[,;]|\bно\b|\bбірақ\b|\bbut\b", query)
+             if not NEGATION.search(p)]
+    text = " ".join(parts) or query
+    words = re.findall(r"\w+", text.lower())
+    extra = [ru for word in words for kk, ru in KAZAKH_WORDS.items() if word.startswith(kk)]
+    extra += [country for word in words for stem, country in COUNTRY_WORDS.items()
+              if word.startswith(stem)]
+    extra += [ru for word in words for en, ru in ENGLISH_WORDS.items() if word.startswith(en)]
+    return " ".join([text, *extra])
+
+
+def film_text(film: dict[str, Any]) -> str:
+    return " ".join([film["title"], film.get("title_en") or "", " ".join(film.get("genres", [])),
+                     " ".join(film.get("countries", [])),
+                     " ".join(film.get("languages", [])), film.get("description", "")])
+
+
+def search_index(films: list[dict[str, Any]]):
+    """TF-IDF по символьным n-граммам; матрица считается один раз на каталог."""
+    key = tuple(str(f["id"]) for f in films)
+    if key not in _INDEX:
+        vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5),
+                                     lowercase=True, sublinear_tf=True,
+                                     min_df=2 if len(films) >= 100 else 1)
+        matrix = vectorizer.fit_transform(film_text(f) for f in films)
+        _INDEX.clear()
+        _INDEX[key] = (vectorizer, matrix)
+    return _INDEX[key]
+
+
+def candidates(query: str, films: list[dict[str, Any]], k: int = K,
+               filters: Filters | None = None) -> list:
+    """До k id без языковой модели: фильтры по полям (если даны) + поиск по описаниям.
+
+    Порядок при равных оценках — порядок каталога (популярные фильмы раньше).
+    """
+    vectorizer, matrix = search_index(films)
+    scores = (matrix @ vectorizer.transform([search_text(query)]).T).toarray().ravel()
+    allowed = [i for i, f in enumerate(films) if filters is None or passes(f, filters)]
+    allowed.sort(key=lambda i: -scores[i])  # sort стабильный: при равенстве — порядок каталога
+    return [films[i]["id"] for i in allowed[:k]]
+
+
+def pick_big(client, model: str, query: str, films: list[dict[str, Any]],
+             effort: str = "none") -> tuple[str, list]:
+    """Как pick, но модели уходят только K кандидатов из candidates (Epic).
+
+    Filters (модель) → candidates(query, films, K, filters) (код) → choose → те же проверки.
+    """
+    print(f"\nМодель {model}")
+    filters, fatal = read_filters(client, model, query, films, effort, variant="big")
+    if fatal:
+        return fatal, []
+    print(f"Условия: {describe(filters)}")
+    ids = set(map(str, candidates(query, films, K, filters)))
+    chosen = [f for f in films if str(f["id"]) in ids]
+    return choose(client, model, query, films, effort, chosen, filters, compact=True,
+                  variant="big")
+
+
+def pick_whole(client, model: str, query: str, films: list[dict[str, Any]],
+               effort: str = "none") -> tuple[str, list]:
+    """Базовый вариант для замера Epic: весь каталог в промпте, один вызов (путь Common)."""
+    print(f"\nМодель {model}")
+    return choose(client, model, query, films, effort, films, Filters(), compact=True,
+                  variant="whole")
+
+
 def main() -> None:
     # Как chef.py на лекции: сначала облако, потом локальный qwen.
     # Без Ollama вторая модель даст no_connection — это нормально.
-    query = sys.argv[1] if len(sys.argv) > 1 else "что посмотреть вечером"
-    films = load_films()
+    # --big (Epic): каталог films_big.json и pick_big — модели уходят только 30 кандидатов.
+    args = sys.argv[1:]
+    big = "--big" in args
+    args = [a for a in args if a != "--big"]
+    query = args[0] if args else "что посмотреть вечером"
+    films = load_films(FILMS_BIG_PATH) if big else load_films()
+    flow = pick_big if big else pick
     client = OpenAI()
-    pick(client, MODEL, query, films, effort=CLOUD_EFFORT)
+    flow(client, MODEL, query, films, effort=CLOUD_EFFORT)
     local = OpenAI(base_url=LOCAL_URL, api_key="ollama", max_retries=0)
-    pick(local, LOCAL_MODEL, query, films)
+    flow(local, LOCAL_MODEL, query, films)
 
 
 if __name__ == "__main__":

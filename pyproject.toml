@@ -6,6 +6,8 @@ dependencies = [
     "openai==3.41.0",
     "pydantic>=2.14.2",
     "python-dotenv>=1.2.4",
+    "scikit-learn>=1.9.1",
+    "tiktoken>=0.14.0",
 ]
 
 [dependency-groups]

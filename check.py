@@ -7,6 +7,11 @@
 uv run check.py
 uv run check.py --local   локальная qwen3.5:4b
 uv run check.py --runs 3  три прогона подряд (Rare: сравнение моделей)
+
+Epic (films_big.json + queries_big.json):
+uv run check.py --big     pick_big: модели уходят только 30 кандидатов
+uv run check.py --whole   весь каталог в промпте, один вызов (только облако)
+uv run check.py --recall  без модели: попал ли фильм из must в 30 кандидатов
 """
 
 from __future__ import annotations
@@ -22,12 +27,15 @@ from pathlib import Path
 import openai
 from openai import OpenAI
 
-from kino import (CLOUD_EFFORT, JOURNAL, LOCAL_MODEL, LOCAL_URL, MODEL, ROOT,
-                  Filters, apply_filters, by_id, load_films, passes, pick)
+from kino import (CLOUD_EFFORT, JOURNAL, LOCAL_MODEL, LOCAL_URL, MODEL, ROOT, K,
+                  Filters, apply_filters, by_id, candidates, load_films, passes, pick,
+                  pick_big, pick_whole)
 
 sys.stdout.reconfigure(encoding="utf-8")
 
 QUERIES = ROOT / "queries.json"
+QUERIES_BIG = ROOT / "queries_big.json"
+FILMS_BIG = ROOT / "films_big.json"
 JOURNAL_NOTE = JOURNAL  # тот же файл, куда пишет pick
 
 
@@ -91,9 +99,50 @@ def parse_report(item, model_filters: dict | None, films) -> dict | None:
             "extra": sorted(set(mine) - set(truth))}
 
 
+def recall(items, films) -> None:
+    """Epic, замер 1: отбор без модели. Фильм из must попал в K кандидатов?
+
+    Три варианта отбора: только поиск по описаниям; поиск + фильтры модели
+    (из строк step="filters" прогона --big в журнале); поиск + эталонные условия.
+    """
+    model_filters: dict[str, list[dict]] = {}
+    if JOURNAL_NOTE.exists():
+        for line in JOURNAL_NOTE.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line) if line.strip() else {}
+            if row.get("step") == "filters" and row.get("variant") == "big":
+                query = row["request"].removeprefix("<запрос>").removesuffix("</запрос>")
+                model_filters.setdefault(query, []).append(row.get("filters", {}))
+
+    def hit(item, conditions):
+        must = {str(x) for x in (item.get("expect") or {}).get("must") or []}
+        found = {str(x) for x in candidates(item["query"], films, K,
+                                            Filters(**conditions) if conditions is not None else None)}
+        return bool(must & found)
+
+    with_must = [x for x in items if (x.get("expect") or {}).get("must")]
+    text = sum(hit(x, None) for x in with_must)
+    gold = sum(hit(x, x.get("conditions", {})) for x in with_must)
+    model_rows = [(x, f) for x in with_must for f in model_filters.get(x["query"], [])]
+    clean = [(x, {k: v for k, v in f.items() if k != "language_quote"}) for x, f in model_rows]
+    by_model = sum(hit(x, f) for x, f in clean)
+    print(f"Отбор без модели, K={K}, каталог {len(films)} фильмов, запросов с must: {len(with_must)}")
+    print(f"  только поиск по описаниям:      {text}/{len(with_must)} ({text / len(with_must):.0%})")
+    if clean:
+        print(f"  поиск + фильтры модели (журнал): {by_model}/{len(clean)} ({by_model / len(clean):.0%})")
+    print(f"  поиск + эталонные условия:      {gold}/{len(with_must)} ({gold / len(with_must):.0%})")
+    misses = [x["query"] for x in with_must if not hit(x, x.get("conditions", {}))]
+    for query in misses:
+        print(f"  мимо (с эталоном): {query}")
+
+
 def main() -> None:
-    items = json.loads(QUERIES.read_text(encoding="utf-8"))
-    films = load_films()
+    big = "--big" in sys.argv or "--whole" in sys.argv or "--recall" in sys.argv
+    items = json.loads((QUERIES_BIG if big else QUERIES).read_text(encoding="utf-8"))
+    films = load_films(FILMS_BIG) if big else load_films()
+    if "--recall" in sys.argv:
+        recall(items, films)
+        return
+    flow = pick_whole if "--whole" in sys.argv else pick_big if big else pick
     if "--local" in sys.argv:
         client = OpenAI(base_url=LOCAL_URL, api_key="ollama", max_retries=0)
         model = LOCAL_MODEL
@@ -113,13 +162,14 @@ def main() -> None:
     for run in range(1, runs + 1):
         if runs > 1:
             print(f"\n=== прогон {run}/{runs} ===")
-        run_set(client, model, effort, items, films)
+        run_set(client, model, effort, items, films, flow)
 
 
-def run_set(client, model, effort, items, films) -> None:
+def run_set(client, model, effort, items, films, flow=pick) -> None:
     """Один прогон набора: исходы, доля пройденных, нарушения условий, чужие id,
     разбор условий против эталона."""
-    print(f"Модель {model} (reasoning_effort={effort}): {len(items)} запросов…\n")
+    print(f"Модель {model} (reasoning_effort={effort}), {flow.__name__}, каталог {len(films)}: "
+          f"{len(items)} запросов…\n")
     known = by_id(films)
     outcomes: list[str] = []
     rejected_total = cut_total = real_total = 0
@@ -134,7 +184,7 @@ def run_set(client, model, effort, items, films) -> None:
         before = JOURNAL_NOTE.read_text(encoding="utf-8") if JOURNAL_NOTE.exists() else ""
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            outcome, ids = pick(client, model, query, films, effort=effort)
+            outcome, ids = flow(client, model, query, films, effort=effort)
         outcomes.append(outcome)
         after = JOURNAL_NOTE.read_text(encoding="utf-8") if JOURNAL_NOTE.exists() else ""
         cut = 0

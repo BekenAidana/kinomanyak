@@ -200,3 +200,26 @@ def test_kazakh_language_form_with_one_typo():
     assert kino.language_evidence("казахский", "казахша драма", "казахша")
     # «про казашку» — о женщине, не о языке: две правки, не проходит
     assert not kino.language_evidence("казахский", "фильм про казашку", "казашку")
+
+
+def test_min_minutes_and_max_rating_work_in_other_direction():
+    films = [dict(FILMS[0], rotten_tomatoes=90), dict(FILMS[1], rotten_tomatoes=30),
+             dict(FILMS[2], rotten_tomatoes=None)]
+    # a1 = 100 мин, b2 = 90, c3 = 110
+    assert ids(kino.apply_filters(films, kino.Filters(min_minutes=100))) == ["a1", "c3"]
+    # рейтинга нет — условие нечем проверить — фильм не проходит
+    assert ids(kino.apply_filters(films, kino.Filters(max_rating=50))) == ["b2"]
+
+
+def test_impossible_bounds_are_dropped_not_guessed():
+    clean = kino.normalize_filters(
+        kino.Filters(min_minutes=150, max_minutes=90, year_from=2020, year_to=2010,
+                     min_rating=80, max_rating=40), FILMS)
+    assert (clean.min_minutes, clean.max_minutes) == (None, None)
+    assert (clean.year_from, clean.year_to) == (None, None)
+    assert (clean.min_rating, clean.max_rating) == (None, None)
+
+
+def test_english_language_phrase_is_language():
+    assert kino.language_named("японский", "an animated movie in Japanese")
+    assert not kino.language_named("японский", "a japanese movie")
