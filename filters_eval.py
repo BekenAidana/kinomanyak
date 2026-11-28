@@ -7,6 +7,7 @@ uv run filters_eval.py                 облако, 1 проход
 uv run filters_eval.py --local --passes 2
 uv run filters_eval.py --local --no-quote   без цитаты: язык проверяется только по запросу
 uv run filters_eval.py --local --no-guard   без проверки языка кодом вообще
+uv run filters_eval.py --big --only direction   набор Epic, только запросы с меткой direction (или en, typo)
 """
 
 from __future__ import annotations
@@ -20,14 +21,18 @@ from collections import Counter
 from openai import OpenAI
 
 import kino
-from check import QUERIES, parse_report
+from check import FILMS_BIG, QUERIES, QUERIES_BIG, parse_report
 
 sys.stdout.reconfigure(encoding="utf-8")
 
 
 def main() -> None:
-    films = kino.load_films()
-    items = json.loads(QUERIES.read_text(encoding="utf-8"))
+    big = "--big" in sys.argv
+    films = kino.load_films(FILMS_BIG) if big else kino.load_films()
+    items = json.loads((QUERIES_BIG if big else QUERIES).read_text(encoding="utf-8"))
+    if "--only" in sys.argv:
+        label = sys.argv[sys.argv.index("--only") + 1]
+        items = [x for x in items if x.get(label)]
     local = "--local" in sys.argv
     passes = int(sys.argv[sys.argv.index("--passes") + 1]) if "--passes" in sys.argv else 1
     guard = "--no-guard" not in sys.argv
